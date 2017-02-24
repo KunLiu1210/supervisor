@@ -19,7 +19,7 @@ under any version of Python 3.
 Documentation
 -------------
 
-You can view the Dependency Function `in the Introduction.txt
+**You can view the Example of the Recursive Dependency Function for supervisor** `in the Introduction.txt
 <https://github.com/FAKERINHEART/supervisor/blob/dev-3.3.1-sr1/Introduction.txt>`_ .
 
 You can view the current Supervisor documentation online `in HTML format
