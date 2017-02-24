@@ -19,6 +19,9 @@ under any version of Python 3.
 Documentation
 -------------
 
+You can view the Dependency Function `in the Introduction.txt
+<https://github.com/FAKERINHEART/supervisor/blob/dev-3.3.1-sr1/Introduction.txt>`_ .
+
 You can view the current Supervisor documentation online `in HTML format
 <http://supervisord.org/>`_ .  This is where you should go for detailed
 installation and configuration documentation.
