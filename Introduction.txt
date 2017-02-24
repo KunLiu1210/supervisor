@@ -1,0 +1,57 @@
+Dependency Example:
+
+[program:id_gen_server.bin]
+command=/data/release/server/dist/id_gen_server/id_gen_server.bin --port=9090
+process_name=%(program_name)s   ; process_name expr (default %(program_name)s)
+numprocs=1                      ; number of processes copies to start (def 1)
+directory=/data/release/server/dist/id_gen_server
+;priority=999
+autostart=true
+startsecs=5
+startretries=3
+autorestart=true
+user=app
+redirect_stderr=false
+stdout_logfile=/data/logs/server/_console_/id_gen_server.bin/supvr.stdout
+stdout_logfile_maxbytes=10MB
+stdout_logfile_backups=10
+;stdout_capture_maxbytes=1MB
+;stdout_events_enabled=false
+stderr_logfile=/data/logs/server/_console_/id_gen_server.bin/supvr.stderr
+stderr_logfile_maxbytes=10MB
+stderr_logfile_backups=10
+;stderr_capture_maxbytes=1MB
+;stderr_events_enabled=false
+;environment=A="1",B="2"
+;serverurl=AUTO
+dependson=config_server.bin,log_server.bin
+
+[program:sm_server.bin]
+command=/data/release/server/dist/sm_server/sm_server.bin --port=9084
+process_name=%(program_name)s   ; process_name expr (default %(program_name)s)
+numprocs=1                      ; number of processes copies to start (def 1)
+directory=/data/release/server/dist/sm_server
+;priority=999
+autostart=false
+startsecs=5
+startretries=3
+autorestart=true
+user=app
+redirect_stderr=false
+stdout_logfile=/data/logs/server/_console_/sm_server.bin/supvr.stdout
+stdout_logfile_maxbytes=10MB
+stdout_logfile_backups=10
+;stdout_capture_maxbytes=1MB
+;stdout_events_enabled=false
+stderr_logfile=/data/logs/server/_console_/sm_server.bin/supvr.stderr
+stderr_logfile_maxbytes=10MB
+stderr_logfile_backups=10
+;stderr_capture_maxbytes=1MB
+;stderr_events_enabled=false
+;environment=A="1",B="2"
+;serverurl=AUTO
+dependson=config_server.bin,log_server.bin,id_gen_server.bin
+
+So, the group(program) sm_server depends on config_server, log_server and id_gen_server.
+And the group(program) id_gen_server depends on config_server and log_server.
+
