@@ -1,4 +1,5 @@
 #!/usr/bin/env python -u
+#coding:utf-8
 
 """supervisorctl -- control applications run by supervisord from the cmd line.
 
@@ -210,6 +211,19 @@ class Controller(cmd.Cmd):
                 if func is not None:
                     break
         return func
+
+    """colored print, gyj8714, 20160721"""
+    def output_with_color(self, stuff, end, mod, fg_color, bg_color):
+        if stuff is not None:
+            if isinstance(stuff, unicode):
+                stuff = stuff.encode('utf-8')
+            if self.stdout.isatty() == True:
+                print '\033[' + mod + ';' + fg_color + ';' +  bg_color + 'm', 
+                print stuff,
+                print '\033[0m',
+                print end,
+            else:
+                self.stdout.write(stuff + '\n')
 
     def output(self, stuff):
         if stuff is not None:
@@ -593,12 +607,24 @@ class DefaultControllerPlugin(ControllerPluginBase):
             if len(namespecs[i]) > maxlen:
                 maxlen = len(namespecs[i])
 
-        template = '%(namespec)-' + str(maxlen+3) + 's%(state)-10s%(desc)s'
+        template_namespec = '%(namespec)-' + str(maxlen+3) + 's'
+        template_state = '%(state)-10s'
+        template_desc = '%(desc)s'
         for i, info in enumerate(process_infos):
-            line = template % {'namespec': namespecs[i],
-                               'state': info['statename'],
-                               'desc': info['description']}
-            self.ctl.output(line)
+            line_namespec = template_namespec % {'namespec': namespecs[i]} 
+            line_state = template_state % {'state': info['statename']}
+            line_desc = template_desc % {'desc': info['description']}
+
+            self.ctl.output_with_color(line_namespec, '', '1','36', '40')
+            if info['statename'] == 'RUNNING':
+                self.ctl.output_with_color(line_state, '', '1', '32', '40')
+            elif info['statename'] == 'STOPPED':
+                self.ctl.output_with_color(line_state, '', '1', '31', '40')
+            elif info["statename"] == 'FATAL':
+                self.ctl.output_with_color(line_state, '', '5', '31', '40')
+            else:
+                self.ctl.output_with_color(line_state, '', '1', '33', '40')
+            self.ctl.output_with_color(line_desc, '\n', '1','36', '40')
 
     def do_status(self, arg):
         if not self.ctl.upcheck():
@@ -690,6 +716,8 @@ class DefaultControllerPlugin(ControllerPluginBase):
             return template % (name, 'abnormal termination')
         elif code == xmlrpc.Faults.SUCCESS:
             return '%s: started' % name
+        elif code == xmlrpc.Faults.FAILED:
+            return template % (name, 'start failed')
         # assertion
         raise ValueError('Unknown result code %s for %s' % (code, name))
 
@@ -700,6 +728,7 @@ class DefaultControllerPlugin(ControllerPluginBase):
         names = arg.split()
         supervisor = self.ctl.get_supervisor()
 
+        # print 11111111111111111111111111111111
         if not names:
             self.ctl.output("Error: start requires a process name")
             self.help_start()
@@ -1029,7 +1058,8 @@ class DefaultControllerPlugin(ControllerPluginBase):
                 if e.faultCode == xmlrpc.Faults.SHUTDOWN_STATE:
                     self.ctl.output('ERROR: shutting down')
                 elif e.faultCode == xmlrpc.Faults.ALREADY_ADDED:
-                    self.ctl.output('ERROR: process group already active')
+                    self.ctl.output('ERROR: ' + e.faultString)
+                    # self.ctl.output('ERROR: process group already active')
                 elif e.faultCode == xmlrpc.Faults.BAD_NAME:
                     self.ctl.output(
                         "ERROR: no such process/group: %s" % name)
@@ -1110,8 +1140,19 @@ class DefaultControllerPlugin(ControllerPluginBase):
                      if res['status'] == xmlrpc.Faults.FAILED]
             if fails:
                 log(gname, "has problems; not removing")
-                continue
-            supervisor.removeProcessGroup(gname)
+                continue 
+            try:
+                supervisor.removeProcessGroup(gname)
+            except xmlrpclib.Fault, e:
+                if e.faultCode == xmlrpc.Faults.STILL_RUNNING:
+                    self.ctl.output('ERROR: process/group still running: %s'
+                                    % gname)
+                elif e.faultCode == xmlrpc.Faults.BAD_NAME:
+                    self.ctl.output(
+                        "ERROR: no such process/group: %s" % gname)
+                else:
+                    raise
+            # supervisor.removeProcessGroup(gname)
             log(gname, "removed process group")
 
         for gname in changed:
@@ -1120,14 +1161,49 @@ class DefaultControllerPlugin(ControllerPluginBase):
             results = supervisor.stopProcessGroup(gname)
             log(gname, "stopped")
 
-            supervisor.removeProcessGroup(gname)
-            supervisor.addProcessGroup(gname)
+            try:
+                supervisor.removeProcessGroup(gname)
+            except xmlrpclib.Fault, e:
+                if e.faultCode == xmlrpc.Faults.STILL_RUNNING:
+                    self.ctl.output('ERROR: process/group still running: %s'
+                                    % gname)
+                elif e.faultCode == xmlrpc.Faults.BAD_NAME:
+                    self.ctl.output(
+                        "ERROR: no such process/group: %s" % gname)
+                else:
+                    raise
+            
+            try:
+                supervisor.addProcessGroup(gname)
+            except xmlrpclib.Fault, e:
+                if e.faultCode == xmlrpc.Faults.SHUTDOWN_STATE:
+                    self.ctl.output('ERROR: shutting down')
+                elif e.faultCode == xmlrpc.Faults.ALREADY_ADDED:
+                    self.ctl.output('ERROR: ' + e.faultString)
+                    # self.ctl.output('ERROR: process group already active')
+                elif e.faultCode == xmlrpc.Faults.BAD_NAME:
+                    self.ctl.output(
+                        "ERROR: no such process/group: %s" % gname)
+            
+            # supervisor.removeProcessGroup(gname)
+            # supervisor.addProcessGroup(gname)
             log(gname, "updated process group")
 
         for gname in added:
             if valid_gnames and gname not in valid_gnames:
                 continue
-            supervisor.addProcessGroup(gname)
+            try:
+                supervisor.addProcessGroup(gname)
+            except xmlrpclib.Fault, e:
+                if e.faultCode == xmlrpc.Faults.SHUTDOWN_STATE:
+                    self.ctl.output('ERROR: shutting down')
+                elif e.faultCode == xmlrpc.Faults.ALREADY_ADDED:
+                    self.ctl.output('ERROR: ' + e.faultString)
+                    # self.ctl.output('ERROR: process group already active')
+                elif e.faultCode == xmlrpc.Faults.BAD_NAME:
+                    self.ctl.output(
+                        "ERROR: no such process/group: %s" % gname)
+            # supervisor.addProcessGroup(gname)
             log(gname, "added process group")
 
     def help_update(self):
